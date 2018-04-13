@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>post test</title>
+</head>
+<body>
+<form action="{% url 'blog:posttest' %}" method="post">
+    {% csrf_token %}
+    <label>用户名
+        <input name="name" type="text">
+    </label>
+    <br>
+    <label>密码
+        <input type="password" name="pass">
+    </label>
+    <br>
+    <input type="submit" value="登陆">
+</form>
+<h1>用户名:{{ name }}</h1><br>
+<h1>密码：{{ pass }}</h1>
+</body>
+</html>
