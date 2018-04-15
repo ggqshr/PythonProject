@@ -78,22 +78,9 @@ def getIntoAns():
     brower.execute_script("arguments[0].scrollIntoView();", dt)
     time.sleep(0.5)
     dt.click()
-    time.sleep(0.5)
     allQues = brower.page_source
-    allcont = re.findall(r'<span class="W_ml10 w_fz18">(.*?)</span>', allQues, re.S)
+    allcont = re.findall(r'<span class="W_ml10 w_fz18">(.*?)</span>', allQues)
     return allcont, brower
-
-
-# 获得当前是哪个题目可见
-def getdisplayques(ques):
-    time.sleep(0.3)
-    for i in ques:
-        if i.is_displayed():
-            try:
-                return int(i.text) + 1
-            except ValueError as ve:
-                time.sleep(1)
-                return getdisplayques(ques)
 
 
 if __name__ == '__main__':
@@ -107,7 +94,6 @@ if __name__ == '__main__':
     if len(allQuestion) < 20:
         g.msgbox("数量小于20，题目没全 ")
     for i in allQuestion:
-        i.replace('\n', '')
         quesNum = getQuesNum(i, data)
         if len(quesNum) == 0:
             nowAns[index] = "A"
@@ -115,22 +101,16 @@ if __name__ == '__main__':
         else:
             nowAns[index] = ans.get(int(quesNum[0]))
             index += 1
-    oldNum = 0
+    ch = ("上一题", "下一题", "完成")
     index = 1
-    num = brower.find_elements_by_class_name("W_num_i")
-    while True:
-        nownum = getdisplayques(num)
-        # 如果当前正在显示的题目和上一次一样，则说明这一题还没答完
-        try:
-            if int(nownum) == int(oldNum):
-                continue
-            # 如果和上一次的num不一样，则说明上一次已经答完，需要切换答案
-            if int(nownum) > int(oldNum):
-                oldNum = nownum
-                print allQuestion[index - 1] + "答案是：\n" + nowAns.get(index)
-                index += 1
-            else:
-                continue
-        except TypeError as te:
+    result = g.indexbox(allQuestion[index - 1] + "的答案是：\n" + nowAns.get(index), choices=ch)
+    while (result != 2):
+        if result == 0 and index == 1:
             continue
-        time.sleep(1)
+        if result == 0:
+            index -= 1
+            result = g.indexbox(allQuestion[index - 1] + "的答案是：\n" + nowAns.get(index), choices=ch)
+        if result == 1:
+            index += 1
+            result = g.indexbox(allQuestion[index - 1] + "的答案是：\n" + nowAns.get(index), choices=ch)
+    brower.close()
