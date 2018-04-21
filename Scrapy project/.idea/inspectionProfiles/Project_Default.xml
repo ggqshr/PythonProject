@@ -5,6 +5,7 @@
       <option name="ignoredIdentifiers">
         <list>
           <option value="dangdang.dangdang.spiders.dd.*" />
+          <option value="jdGetall.jdGetall.spiders.jdall.jdGetall" />
         </list>
       </option>
     </inspection_tool>
