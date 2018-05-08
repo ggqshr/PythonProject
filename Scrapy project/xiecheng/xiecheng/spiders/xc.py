@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
+import time
+
 import scrapy
+from scrapy import log
 from scrapy.http import Request
 from scrapy.http import FormRequest
 from xiecheng.items import XiechengItem
@@ -36,7 +39,12 @@ class XcSpider(scrapy.Spider):
 
     def getdata(self, response):
         selector = response.css("html body div.content.cf div.dest_toptitle.detail_tt div.cf div.f_left h1 a")
-        sitename = selector.xpath("./text()").extract()[0]
+        try:
+            sitename = selector.xpath("./text()").extract()[0]
+        except IndexError as e:
+            time.sleep(0.5)
+            selector = response.css("html body div.content.cf div.dest_toptitle.detail_tt div.cf div.f_left h1 a")
+            sitename = selector.xpath("./text()").extract()[0]
         comment_id = response.xpath(
             "//div[@class='comment_entrance']//a[@class='b_orange_m f_right write_recomment']/@data-id").extract()[0]
         selector = response.css(
@@ -47,23 +55,24 @@ class XcSpider(scrapy.Spider):
         else:
             total_page = total_page[0]
         for now_page in xrange(1, int(total_page) + 1):
-            data = {
-                "poiID": str(comment_id),
-                "districtId": "5",
-                "districtEName": " Qingdao",
-                "pagenow": str(now_page),
-                "order": "3.0",
-                "star": "0.0",
-                "tourist": "0.0",
-                "resourceId": "1265",
-                "resourcetype": "2"
-            }
-            yield FormRequest(url=self.get_commit_data_url,
-                              headers=self.ua,
-                              formdata=data,
-                              callback=self.extract_data,
-                              meta={"sitename":sitename}
-                              )
+            for start_num in xrange(1,6):
+                data = {
+                    "poiID": str(comment_id),
+                    "districtId": "5",
+                    "districtEName": " Qingdao",
+                    "pagenow": str(now_page),
+                    "order": "3.0",
+                    "star": str(start_num),
+                    "tourist": "0.0",
+                    "resourceId": "1265",
+                    "resourcetype": "2"
+                }
+                yield FormRequest(url=self.get_commit_data_url,
+                                  headers=self.ua,
+                                  formdata=data,
+                                  callback=self.extract_data,
+                                  meta={"sitename":sitename}
+                                  )
 
     def extract_data(self, response):
         # from scrapy.shell import inspect_response

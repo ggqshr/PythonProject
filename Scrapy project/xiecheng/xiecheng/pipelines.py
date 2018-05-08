@@ -22,11 +22,14 @@ class XiechengPipeline(object):
     def process_item(self, item, spider):
         for authorName, content, useful, \
             view_score, interest_score, price_score, view_type, total_score, comment_time in \
-                zip(item["authorName"], item["content"], item["useful"], \
-                    item["view_score"], item["interest_score"], item["price_score"], \
+                zip(item["authorName"], item["content"], item["useful"],
+                    item["view_score"], item["interest_score"], item["price_score"],
                     item["view_type"], item["total_score"], item["comment_time"]):
-            sql = "insert into xiecheng values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
-            self.cur.execute(sql, (authorName, u""+content, int(useful),
+            sql = "insert into xiecheng(authorName," \
+                  "content,useful,view_score,interest_score," \
+                  "price_score,view_type,total_score,comment_time," \
+                  "comment_place) values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+            self.cur.execute(sql, (authorName, u"" + content, int(useful),
                                    int(view_score),
                                    int(interest_score),
                                    int(price_score),
