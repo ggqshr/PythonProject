@@ -7,7 +7,7 @@ import time
 from selenium.webdriver.support.ui import Select
 import sys
 import easygui as g
-
+from changFIle import getnewdata
 
 # 加载数据
 def getdata(filePath):
@@ -30,7 +30,7 @@ def getAnsContent(filePath):
         allAns[qNum] = quesAns
         ansContent = ''
         for op in quesAns[0].split(","):
-            pattern = op + u'、(.*?)\n'
+            pattern = op.strip() + u'、(.*?)\s'
             cont = re.findall(pattern, ques)
             ansContent += cont[0] + "\n"
         allAnsContent[qNum] = ansContent
@@ -40,7 +40,7 @@ def getAnsContent(filePath):
 
 # 根据题目内容获取题目编号
 def getQuesNum(ss, data):
-    pattern = u'(.*?)、' + ss
+    pattern = u'(.*?)' + ss
     num = re.findall(pattern, data)
     return num
 
@@ -99,16 +99,17 @@ def getdisplayques(ques):
 if __name__ == '__main__':
     reload(sys)
     sys.setdefaultencoding('utf-8')
-    ans = getAnsContent(r"C:\Users\ggq\Desktop\ans.txt")
+    ans = getAnsContent(r".\ans.txt")
     allQuestion, brower = getIntoAns()
-    data = getdata(r"C:\Users\ggq\Desktop\ans.txt")
+    data = getdata(r".\ans.txt")
+    newdata = getnewdata()
     nowAns = {}
     index = 1
     if len(allQuestion) < 20:
         g.msgbox("数量小于20，题目没全 ")
     for i in allQuestion:
         i.replace('\n', '')
-        quesNum = getQuesNum(i, data)
+        quesNum = getQuesNum(i, newdata)
         if len(quesNum) == 0:
             nowAns[index] = "A"
             index += 1
