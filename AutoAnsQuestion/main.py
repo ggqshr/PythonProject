@@ -9,6 +9,7 @@ import sys
 import easygui as g
 from changFIle import getnewdata
 
+
 # 加载数据
 def getdata(filePath):
     ansFile = open(r'' + filePath, "r")
