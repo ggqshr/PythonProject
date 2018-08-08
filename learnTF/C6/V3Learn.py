@@ -8,6 +8,7 @@ import random
 import numpy as np
 import tensorflow as tf
 from tensorflow.python.platform import gfile
+from tensorflow.python.framework import graph_util
 
 # Inception-V3模型瓶颈层的节点个数
 BOTTLENECK_TENSOR_SIZE = 2048
@@ -152,21 +153,27 @@ def get_test_bottlenecks(sess, image_lists, n_classes, jpeg_data_tensor, bottlen
     return bottlenecks, groud_truths
 
 
-def main(_):
-    image_lists = create_image_lists(TEST_PERCENTAGE, VALIDATION_PERCENTAGE)
-    n_classes = len(image_lists.keys())
-    with gfile.FastGFile(os.path.join(MODEL_DIR, MODEL_FILE), 'rb')as f:
-        graph_def = tf.GraphDef()
-        graph_def.ParseFromString(f.read())
-    bottleneck_tensor, jpeg_data_tensor = tf.import_graph_def(
-        graph_def, return_elements=[BOTTLENECK_TENSOR_NAME, JPEG_DATA_TENSOR_NAME]
-    )
-    bottlececk_input = tf.placeholder(tf.float32, [None, BOTTLENECK_TENSOR_SIZE], name="BottleneckInput")
-    ground_truth_input = tf.placeholder(tf.float32, [None, n_classes], name='GroundTruthInput')
+# 创建一个图，将从inception-v3模型中提取出来的变量放在创建的图中，在sess创建时传入，
+# 确保能够将inception模型和新的全连接层串联起来，便于保存成pb文件。
+def getGraph():
+    graph = tf.Graph()
+    with graph.as_default():
+        with gfile.FastGFile(os.path.join(MODEL_DIR, MODEL_FILE), 'rb')as f:
+            graph_def = tf.GraphDef()
+            graph_def.ParseFromString(f.read())
+            bottleneck_tensor, jpeg_data_tensor = tf.import_graph_def(graph_def, name="",
+                                                                      return_elements=[BOTTLENECK_TENSOR_NAME,
+                                                                                       JPEG_DATA_TENSOR_NAME]
+                                                                      )
+    return graph, bottleneck_tensor, jpeg_data_tensor
+
+
+# 创建最后一层全连接层
+def get_train_(n_classes, bootleneck_input, ground_truth_input):
     with tf.name_scope('final_training_ops'):
         weights = tf.Variable(tf.truncated_normal([BOTTLENECK_TENSOR_SIZE, n_classes], stddev=0.001))
         biases = tf.Variable(tf.zeros([n_classes]))
-        logits = tf.matmul(bottlececk_input, weights) + biases
+        logits = tf.matmul(bootleneck_input, weights) + biases
         final_tensor = tf.nn.softmax(logits)
     cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=ground_truth_input)
     cross_entropy_mean = tf.reduce_mean(cross_entropy)
@@ -174,17 +181,108 @@ def main(_):
     with tf.name_scope('evaluation'):
         correct_prediction = tf.equal(tf.argmax(final_tensor, 1), tf.argmax(ground_truth_input, 1))
         evaluation_step = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-    config = tf.ConfigProto(allow_soft_placement=True)
-    config.gpu_options.allow_growth = True
-    config.gpu_options.per_process_gpu_memory_fraction = 0.9
-    with tf.Session(config=config) as sess:
+    return train_step, evaluation_step
+
+
+# 创建一个设置对象
+def getconfig():
+    config = tf.ConfigProto(allow_soft_placement=True)  # 允许在GPU上运行失败的计算转移到CPU上
+    config.gpu_options.allow_growth = True  # 设置在一开始时不分配所有的GPU内存，而是随着需求自动增长
+    config.gpu_options.per_process_gpu_memory_fraction = 0.9  # 设置允许使用的最大GPU内存
+    return config
+
+
+def get_placeHolder(n_classes, bottleneck_tensor, graph):
+    # 使用placeholder_with_default函数将inception模型和新的全连接层串起来
+    # 这样在保存时，如果使用gfile的方式即可将inception模型和新的模型一起保存起来
+    # 但要注意placeholder_with_default函数传入的那个变量必须和生成的变量在一个图中，
+    # 在同一个sess中使用的图是同一个，也可以自己创建图来控制，在sess创建的时候传入即可
+    # 若使用saver的方式，即可不用使用placeholder_with_default函数，只需保证
+    # inception 新的全连接层，以及saver使用的是一个sess，所以所有的图的信息都会保存到一个ckpt文件中
+    with graph.as_default():
+        bottlececk_input = tf.placeholder_with_default(bottleneck_tensor, [None, BOTTLENECK_TENSOR_SIZE],
+                                                       name="BottleneckInput")
+        ground_truth_input = tf.placeholder(tf.float32, [None, n_classes], name='GroundTruthInput')
+    return bottlececk_input, ground_truth_input
+
+
+# 保存成pb格式
+# def main(_):
+#     image_lists = create_image_lists(TEST_PERCENTAGE, VALIDATION_PERCENTAGE)
+#     n_classes = len(image_lists.keys())  # 共有多少类别
+#     graph, bottleneck_tensor, jpeg_data_tensor = getGraph()
+#     bottlececk_input, ground_truth_input = get_placeHolder(n_classes, bottleneck_tensor, graph)
+#     with tf.Session(config=getconfig(), graph=graph) as sess:
+#
+#         train_step, evaluation_step = get_train_(n_classes, bottlececk_input, ground_truth_input)
+#         tf.global_variables_initializer().run()
+#         for i in range(STEPS):
+#             train_bottlenecks, train_ground_truth = get_random_cached_bottlenecks(sess,
+#                                                                                   n_classes,
+#                                                                                   image_lists,
+#                                                                                   BATCH,
+#                                                                                   'training',
+#                                                                                   jpeg_data_tensor,
+#                                                                                   bottleneck_tensor)
+#             sess.run(train_step,
+#                      feed_dict={
+#                          bottlececk_input: train_bottlenecks,
+#                          ground_truth_input: train_ground_truth
+#                      })
+#             if i % 100 == 0 or i + 1 == STEPS:
+#                 validation_bottlenecks, validation_ground_truth = get_random_cached_bottlenecks(sess, n_classes,
+#                                                                                                 image_lists, BATCH,
+#                                                                                                 'validation',
+#                                                                                                 jpeg_data_tensor,
+#                                                                                                 bottleneck_tensor)
+#                 validation_accuracy = sess.run(evaluation_step, feed_dict={
+#                     bottlececk_input: validation_bottlenecks,
+#                     ground_truth_input: validation_ground_truth
+#                 })
+#                 print("Step %d : validation accuracy on random sampled %d example = %.1f%%"
+#                       % (i, BATCH, validation_accuracy * 100))
+#         test_bottlenecks, test_ground_truth = get_test_bottlenecks(
+#             sess, image_lists, n_classes, jpeg_data_tensor, bottleneck_tensor
+#         )
+#         test_accuracy = sess.run(evaluation_step, feed_dict={bottlececk_input: test_bottlenecks,
+#                                                              ground_truth_input: test_ground_truth})
+#         print('final test accuracy = %.1f%%' % (test_accuracy * 100))
+#         constant_graph = graph_util.convert_variables_to_constants(sess, sess.graph_def, output_node_names=[
+#             'final_training_ops/Softmax'
+#         ])
+#         # 使用这种方式需要将原来的模型和新的模型串联起来，才能够保存在一个文件中，
+#         with gfile.FastGFile("final.pb", 'wb') as f:
+#             f.write(constant_graph.SerializeToString())
+
+def main(_):
+    image_lists = create_image_lists(TEST_PERCENTAGE, VALIDATION_PERCENTAGE)
+    n_classes = len(image_lists.keys())  # 共有多少类别
+    with gfile.FastGFile(os.path.join(MODEL_DIR, MODEL_FILE), 'rb')as f:
+        graph_def = tf.GraphDef()
+        graph_def.ParseFromString(f.read())
+    bottleneck_tensor, jpeg_data_tensor = tf.import_graph_def(graph_def, name="",
+                                                                  return_elements=[BOTTLENECK_TENSOR_NAME,
+                                                                                   JPEG_DATA_TENSOR_NAME])
+    bottlececk_input = tf.placeholder(tf.float32, [None, BOTTLENECK_TENSOR_SIZE],
+                                      name="BottleneckInput")
+    ground_truth_input = tf.placeholder(tf.float32, [None, n_classes], name='GroundTruthInput')
+    train_step, evaluation_step = get_train_(n_classes, bottlececk_input, ground_truth_input)
+    with tf.Session(config=getconfig()) as sess:
+        saver = tf.train.Saver()
         tf.global_variables_initializer().run()
         for i in range(STEPS):
-            train_bottlenecks, train_ground_truth = get_random_cached_bottlenecks(sess, n_classes, image_lists, BATCH,
-                                                                                  'training', jpeg_data_tensor,
+            train_bottlenecks, train_ground_truth = get_random_cached_bottlenecks(sess,
+                                                                                  n_classes,
+                                                                                  image_lists,
+                                                                                  BATCH,
+                                                                                  'training',
+                                                                                  jpeg_data_tensor,
                                                                                   bottleneck_tensor)
             sess.run(train_step,
-                     feed_dict={bottlececk_input: train_bottlenecks, ground_truth_input: train_ground_truth})
+                     feed_dict={
+                         bottlececk_input: train_bottlenecks,
+                         ground_truth_input: train_ground_truth
+                     })
             if i % 100 == 0 or i + 1 == STEPS:
                 validation_bottlenecks, validation_ground_truth = get_random_cached_bottlenecks(sess, n_classes,
                                                                                                 image_lists, BATCH,
@@ -203,6 +301,7 @@ def main(_):
         test_accuracy = sess.run(evaluation_step, feed_dict={bottlececk_input: test_bottlenecks,
                                                              ground_truth_input: test_ground_truth})
         print('final test accuracy = %.1f%%' % (test_accuracy * 100))
+        saver.save(sess, "ckpt/nn")
 
 
 if __name__ == '__main__':
