@@ -109,18 +109,29 @@ venv.bak/
 
 # IntelliJ project files
 .idea
-*.iml
 out
 gen
 /Tensorflow-master/
-/flower_photos.tgz
 /C6/flower_photos/
 /C6/MNIST_data/
 /C6/model/
 /C6/v3/
 /C6/inception-2015-12-05.tgz
-/Tensorflow-master.zip
 /C6/tmp/
 /C6/pbtxt/
 /C6/ckpt/
 /C6/final.pb
+<<<<<<< HEAD
+=======
+/C7/recored/
+/testClaassify/v3/
+/testClaassify/train/
+/testClaassify/ckpt/
+/testClaassify/tmp/
+/testClaassify/20180808_163528.jpg
+/testClaassify/mytraindata/
+/AllDataBackUp/
+/C6/mytraindata/
+/C5/model/
+/C5/MNIST_data/
+>>>>>>> 实现了对对象的处理，并对自己的数据集进行了训练和预测
