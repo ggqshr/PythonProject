@@ -135,3 +135,11 @@ gen
 /C5/model/
 /C5/MNIST_data/
 >>>>>>> 实现了对对象的处理，并对自己的数据集进行了训练和预测
+/C7/path/
+/C7/new_data/
+/C7/20180811_085535.jpg
+/C7/20180811_085553.jpg
+/C6/new_data/
+/testClaassify/20180811_085535.jpg
+/testClaassify/20180811_085553.jpg
+/testClaassify/backup/
