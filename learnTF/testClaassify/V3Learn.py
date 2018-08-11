@@ -30,7 +30,7 @@ VALIDATION_PERCENTAGE = 10
 TEST_PERCENTAGE = 10
 
 LEARN_RATE = 0.01
-STEPS = 200
+STEPS = 1200
 BATCH = 100
 
 
@@ -296,12 +296,12 @@ def main(_):
                 })
                 print("Step %d : validation accuracy on random sampled %d example = %.1f%%"
                       % (i, BATCH, validation_accuracy * 100))
-        # test_bottlenecks, test_ground_truth = get_test_bottlenecks(
-        #     sess, image_lists, n_classes, jpeg_data_tensor, bottleneck_tensor
-        # )
-        # test_accuracy = sess.run(evaluation_step, feed_dict={bottlececk_input: test_bottlenecks,
-        #                                                      ground_truth_input: test_ground_truth})
-        # print('final test accuracy = %.1f%%' % (test_accuracy * 100))
+        test_bottlenecks, test_ground_truth = get_test_bottlenecks(
+            sess, image_lists, n_classes, jpeg_data_tensor, bottleneck_tensor
+        )
+        test_accuracy = sess.run(evaluation_step, feed_dict={bottlececk_input: test_bottlenecks,
+                                                             ground_truth_input: test_ground_truth})
+        print('final test accuracy = %.1f%%' % (test_accuracy * 100))
         saver.save(sess, "ckpt/nn")
 
 
