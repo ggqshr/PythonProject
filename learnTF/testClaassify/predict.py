@@ -28,7 +28,7 @@ def predictByCkptFIle():
         saver.restore(sess, ckpt.model_checkpoint_path)
         g = tf.get_default_graph()
         softmax_tensor = g.get_tensor_by_name("pool_3/_reshape:0")
-        imageData = tf.gfile.FastGFile("20180811_085535.jpg", 'rb').read()
+        imageData = tf.gfile.FastGFile("resize20180812_165259.jpg", 'rb').read()
         botlleneck = sess.run(softmax_tensor, feed_dict={"DecodeJpeg/contents:0": imageData})
         predict = sess.run(g.get_tensor_by_name('final_training_ops/Softmax:0'),
                            feed_dict={g.get_tensor_by_name('BottleneckInput:0'): botlleneck})

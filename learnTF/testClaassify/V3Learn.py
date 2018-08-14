@@ -30,7 +30,7 @@ VALIDATION_PERCENTAGE = 10
 TEST_PERCENTAGE = 10
 
 LEARN_RATE = 0.01
-STEPS = 1200
+STEPS = 2000
 BATCH = 100
 
 
@@ -170,13 +170,17 @@ def getGraph():
 
 # 创建最后一层全连接层
 def get_train_(n_classes, bootleneck_input, ground_truth_input):
+    regularizer = tf.contrib.layers.l2_regularizer(0.0001)
     with tf.name_scope('final_training_ops'):
-        weights = tf.Variable(tf.truncated_normal([BOTTLENECK_TENSOR_SIZE, n_classes], stddev=0.001))
-        biases = tf.Variable(tf.zeros([n_classes]))
-        logits = tf.matmul(bootleneck_input, weights) + biases
-        final_tensor = tf.nn.softmax(logits)
-    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=ground_truth_input)
-    cross_entropy_mean = tf.reduce_mean(cross_entropy)
+        weights = tf.Variable(tf.truncated_normal([BOTTLENECK_TENSOR_SIZE, 1024], stddev=0.001))
+        biases = tf.Variable(tf.zeros([1024]))
+        logits = tf.nn.relu(tf.matmul(bootleneck_input, weights) + biases)
+        weights1 = tf.Variable(tf.truncated_normal([1024, n_classes], stddev=0.001))
+        biases1 = tf.Variable(tf.zeros([n_classes]))
+        logits1 = tf.matmul(logits, weights1) + biases1
+        final_tensor = tf.nn.softmax(logits1)
+    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=logits1, labels=ground_truth_input)
+    cross_entropy_mean = tf.reduce_mean(cross_entropy)+regularizer(weights)
     train_step = tf.train.GradientDescentOptimizer(LEARN_RATE).minimize(cross_entropy_mean)
     with tf.name_scope('evaluation'):
         correct_prediction = tf.equal(tf.argmax(final_tensor, 1), tf.argmax(ground_truth_input, 1))
@@ -262,8 +266,8 @@ def main(_):
         graph_def = tf.GraphDef()
         graph_def.ParseFromString(f.read())
     bottleneck_tensor, jpeg_data_tensor = tf.import_graph_def(graph_def, name="",
-                                                                  return_elements=[BOTTLENECK_TENSOR_NAME,
-                                                                                   JPEG_DATA_TENSOR_NAME])
+                                                              return_elements=[BOTTLENECK_TENSOR_NAME,
+                                                                               JPEG_DATA_TENSOR_NAME])
     bottlececk_input = tf.placeholder(tf.float32, [None, BOTTLENECK_TENSOR_SIZE],
                                       name="BottleneckInput")
     ground_truth_input = tf.placeholder(tf.float32, [None, n_classes], name='GroundTruthInput')

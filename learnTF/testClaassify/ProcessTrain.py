@@ -34,9 +34,9 @@ def preprocess_for_train(image, height, width, bbox):
         bbox = tf.constant([0.0, 0.0, 1.0, 1.0], dtype=tf.float32, shape=[1, 1, 4])
     if image.dtype != tf.float32:
         image = tf.image.convert_image_dtype(image, tf.float32)
-    # bbox_begin, bbox_size, _ = tf.image.sample_distorted_bounding_box(tf.shape(image), bounding_boxes=bbox)
-    # distort_image = tf.slice(image, bbox_begin, bbox_size)
-    distort_image = tf.image.resize_images(image, size=[width, height], method=np.random.randint(4))
+    bbox_begin, bbox_size, _ = tf.image.sample_distorted_bounding_box(tf.shape(image), bounding_boxes=bbox)
+    distort_image = tf.slice(image, bbox_begin, bbox_size)
+    distort_image = tf.image.resize_images(distort_image, size=[width, height], method=np.random.randint(4))
     distort_image = distort_color(distort_image, np.random.randint(2))
     distort_image = tf.image.random_flip_left_right(distort_image)
     return distort_image
@@ -65,7 +65,7 @@ def precess():
             # print(label, os.path.join(fileDir, file))
             image_raw_data = tf.gfile.FastGFile(os.path.join(fileDir, file), 'rb').read()  # 读取每一个图片变成二进制数据
             img_data = tf.image.decode_jpeg(image_raw_data)  # 解码
-            for i in range(6):
+            for i in range(8):
                 result = preprocess_for_train(img_data, 440, 320, None)
                 image = tf.image.convert_image_dtype(result, tf.uint8)
                 encode_image = tf.image.encode_jpeg(image)
