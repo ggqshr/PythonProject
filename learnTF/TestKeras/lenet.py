@@ -1,29 +1,24 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# 作用：
+# import the necessary packages
 from keras.models import Sequential
 from keras.layers.convolutional import Conv2D
 from keras.layers.convolutional import MaxPooling2D
-from keras.layers.core import Activation, Dropout
+from keras.layers.core import Activation
 from keras.layers.core import Flatten
 from keras.layers.core import Dense
 from keras import backend as K
-
-EPOCHS = 35
-INIT_LR = 1e-3
-BS = 32
-CLASS_NUM = 62
-norm_size = 32
 
 
 class LeNet:
     @staticmethod
     def build(width, height, depth, classes):
+        # initialize the model
         model = Sequential()
-        input_shape = (height, width, depth)
-        if K.image_data_format() == 'channels_first':
-            input_shape = (depth, height, width)
-        model.add(Conv2D(20, (5, 5), padding="same", input_shape=input_shape))
+        inputShape = (height, width, depth)
+        # if we are using "channels last", update the input shape
+        if K.image_data_format() == "channels_first":  # for tensorflow
+            inputShape = (depth, height, width)
+        # first set of CONV => RELU => POOL layers
+        model.add(Conv2D(20, (5, 5), padding="same", input_shape=inputShape))
         model.add(Activation("relu"))
         model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
         # second set of CONV => RELU => POOL layers
@@ -31,7 +26,6 @@ class LeNet:
         model.add(Activation("relu"))
         model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
         # first (and only) set of FC => RELU layers
-        model.add(Dropout(0.5))
         model.add(Flatten())
         model.add(Dense(500))
         model.add(Activation("relu"))
@@ -42,4 +36,3 @@ class LeNet:
 
         # return the constructed network architecture
         return model
-

@@ -114,6 +114,8 @@ if __name__ == '__main__':
     test_file_path = args["dataset_test"]
     trainX, trainY = load_data(train_file_path)
     testX, testY = load_data(test_file_path)
+    print('train data len : %d train label len : %d' % (len(trainX), len(trainY)))
+    print('test data len : %d test label len : %d' % (len(testX), len(testY)))
     # construct the image generator for data augmentation
     aug = ImageDataGenerator(rotation_range=30, width_shift_range=0.1,
                              height_shift_range=0.1, shear_range=0.2, zoom_range=0.2,
