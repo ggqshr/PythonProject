@@ -1,0 +1,138 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# 作用：
+import matplotlib
+
+matplotlib.use("Agg")
+
+# import the necessary packages
+from keras.preprocessing.image import ImageDataGenerator
+from keras.optimizers import Adam
+from sklearn.model_selection import train_test_split
+from keras.preprocessing.image import img_to_array
+from keras.utils import to_categorical
+from imutils import paths
+import matplotlib.pyplot as plt
+import numpy as np
+import argparse
+import random
+import cv2
+import os
+import sys
+
+sys.path.append('./')
+from lenet import LeNet
+
+EPOCHS = 35
+INIT_LR = 1e-3
+BS = 32
+CLASS_NUM = 18
+norm_size = 32
+
+
+def args_parse():
+    # construct the argument parse and parse the arguments
+    ap = argparse.ArgumentParser()
+    ap.add_argument('-d', '--data_dir', required=True, help='dir to read data')
+    # ap.add_argument("-dtest", "--dataset_test", required=True,
+    #                 help="path to input dataset_test")
+    # ap.add_argument("-dtrain", "--dataset_train", required=True,
+    #                 help="path to input dataset_train")
+    ap.add_argument("-m", "--model", required=True,
+                    help="path to output model")
+    ap.add_argument("-p", "--plot", type=str, default="plot.png",
+                    help="path to output accuracy/loss plot")
+    args = vars(ap.parse_args())
+    return args
+
+
+def load_data(path):
+    print("[INFO] loading images...")
+    data = []
+    labels = []
+    # grab the image paths and randomly shuffle them
+    imagePaths = sorted(list(paths.list_images(path)))
+    random.seed(42)
+    random.shuffle(imagePaths)
+    # loop over the input images
+    for imagePath in imagePaths:
+        # load the image, pre-process it, and store it in the data list
+        image = cv2.imread(imagePath)
+        image = cv2.resize(image, (norm_size, norm_size))
+        image = img_to_array(image)
+        data.append(image)
+
+        # extract the class label from the image path and update the
+        # labels list
+        label = int(imagePath.split(os.path.sep)[-2])
+        labels.append(label)
+
+    # scale the raw pixel intensities to the range [0, 1]
+    data = np.array(data, dtype="float") / 255.0
+    labels = np.array(labels)
+
+    # convert the labels from integers to vectors
+    labels = to_categorical(labels, num_classes=CLASS_NUM)
+    return data, labels
+
+
+def train(aug, trainX, trainY, testX, testY, args):
+    # initialize the model
+    print("[INFO] compiling model...")
+    model = LeNet.build(width=norm_size, height=norm_size, depth=3, classes=CLASS_NUM)
+    opt = Adam(lr=INIT_LR, decay=INIT_LR / EPOCHS)
+    model.compile(loss="categorical_crossentropy", optimizer=opt,
+                  metrics=["accuracy"])
+
+    # train the network
+    print("[INFO] training network...")
+    H = model.fit_generator(aug.flow(trainX, trainY, batch_size=BS),
+                            validation_data=(testX, testY), steps_per_epoch=len(trainX) // BS,
+                            epochs=EPOCHS, verbose=1)
+
+    # save the model to disk
+    print("[INFO] serializing network...")
+    model.save(args["model"])
+
+    # plot the training loss and accuracy
+    plt.style.use("ggplot")
+    plt.figure()
+    N = EPOCHS
+    plt.plot(np.arange(0, N), H.history["loss"], label="train_loss")
+    plt.plot(np.arange(0, N), H.history["val_loss"], label="val_loss")
+    plt.plot(np.arange(0, N), H.history["acc"], label="train_acc")
+    plt.plot(np.arange(0, N), H.history["val_acc"], label="val_acc")
+    plt.title("Training Loss and Accuracy on traffic-sign classifier")
+    plt.xlabel("Epoch #")
+    plt.ylabel("Loss/Accuracy")
+    plt.legend(loc="lower left")
+    plt.savefig(args["plot"])
+
+
+def read_data_and_procee(aug, dir):
+    data = []
+    label = []
+    i = 0
+    for x, y in aug.flow_from_directory(dir, batch_size=137,target_size=(norm_size,norm_size)):
+        data.extend([img_to_array(xx) for xx in x])
+        label.extend(y)
+        i += 1
+        if i == 10:
+            break
+    data = np.array(data, dtype="float") / 255.0
+    return data, np.array(label)
+
+
+if __name__ == '__main__':
+    args = args_parse()
+    data_dir = args['data_dir']
+    aug1 = ImageDataGenerator()
+    aug = ImageDataGenerator(rotation_range=30, width_shift_range=0.1,
+                             height_shift_range=0.1, shear_range=0.2, zoom_range=0.2,
+                             horizontal_flip=True, fill_mode="nearest")
+    data, label = read_data_and_procee(aug, data_dir)
+    trainX, testX, trainY, testY = train_test_split(data, label)
+    print('train data len : %d train label len : %d' % (len(trainX), len(trainY)))
+    print('test data len : %d test label len : %d' % (len(testX), len(testY)))
+    # construct the image generator for data augmentation
+    train(aug, trainX, trainY, testX, testY, args)
