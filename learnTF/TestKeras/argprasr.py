@@ -23,10 +23,10 @@ import sys
 sys.path.append('./')
 from lenet import LeNet
 
-EPOCHS = 35
+EPOCHS = 50
 INIT_LR = 1e-3
 BS = 32
-CLASS_NUM = 62
+CLASS_NUM = 18
 norm_size = 32
 
 

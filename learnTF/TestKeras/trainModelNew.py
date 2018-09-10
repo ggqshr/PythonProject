@@ -23,7 +23,7 @@ import sys
 sys.path.append('./')
 from lenet import LeNet
 
-EPOCHS = 35
+EPOCHS = 50
 INIT_LR = 1e-3
 BS = 32
 CLASS_NUM = 18
@@ -113,11 +113,11 @@ def read_data_and_procee(aug, dir):
     data = []
     label = []
     i = 0
-    for x, y in aug.flow_from_directory(dir, batch_size=137,target_size=(norm_size,norm_size)):
+    for x, y in aug.flow_from_directory(dir, batch_size=200,target_size=(norm_size,norm_size)):
         data.extend([img_to_array(xx) for xx in x])
         label.extend(y)
         i += 1
-        if i == 10:
+        if i == 50:
             break
     data = np.array(data, dtype="float") / 255.0
     return data, np.array(label)
@@ -126,7 +126,6 @@ def read_data_and_procee(aug, dir):
 if __name__ == '__main__':
     args = args_parse()
     data_dir = args['data_dir']
-    aug1 = ImageDataGenerator()
     aug = ImageDataGenerator(rotation_range=30, width_shift_range=0.1,
                              height_shift_range=0.1, shear_range=0.2, zoom_range=0.2,
                              horizontal_flip=True, fill_mode="nearest")
